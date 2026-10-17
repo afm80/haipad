@@ -1,5 +1,5 @@
-name: hekaya
-description: "منصة حكاية لكتابة وقراءة القصص والروايات"
+name: haipad
+description: "haipad - منصة لكتابة وقراءة القصص والروايات"
 publish_to: 'none'
 version: 1.0.0+1
 
