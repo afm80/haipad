@@ -19,7 +19,7 @@ jobs:
       - name: Create web folder if missing
         run: |
           if [ ! -d web ]; then
-            flutter create . --platforms web --project-name hekaya
+            flutter create . --platforms web --project-name haipad
           fi
 
       - run: flutter pub get
@@ -29,5 +29,5 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          projectId: hekaya-1980
+          projectId: haipad
           channelId: live
