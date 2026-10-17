@@ -136,15 +136,23 @@ class ProfilePage extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: Container(
+            child: SizedBox(
               height: 176,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [AppColors.brand600, AppColors.amber500, AppColors.brand600],
-                ),
-              ),
+              child: p.banner.isNotEmpty
+                  ? netImage(p.banner)
+                  : Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            AppColors.brand600,
+                            AppColors.amber500,
+                            AppColors.brand600
+                          ],
+                        ),
+                      ),
+                    ),
             ),
           ),
           Padding(
