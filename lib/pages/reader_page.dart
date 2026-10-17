@@ -233,6 +233,62 @@ class ReaderPage extends StatelessWidget {
     );
   }
 
+  /// قائمة الفصول (تظهر من الأسفل وتصلح للجوال).
+  void _chaptersSheet(BuildContext context, List<Chapter> chapters, int current) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.7),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                  child: Text('الفصول (${chapters.length})',
+                      style: cairo(16, weight: FontWeight.w800, color: AppColors.slate900)),
+                ),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: chapters.length,
+                    itemBuilder: (_, i) {
+                      final active = i == current;
+                      return ListTile(
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          app.setChapter(i);
+                        },
+                        leading: Text('${i + 1}',
+                            style: cairo(14,
+                                weight: FontWeight.w700,
+                                color: active ? AppColors.brand500 : AppColors.slate400)),
+                        title: Text(chapters[i].title,
+                            style: cairo(14,
+                                weight: active ? FontWeight.w800 : FontWeight.w600,
+                                color: active ? AppColors.brand500 : AppColors.slate800)),
+                        trailing: active
+                            ? const Icon(Icons.check, size: 18, color: AppColors.brand500)
+                            : null,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _box(BuildContext context, Story s, List<Chapter> chapters, double w) {
     final wide = w >= 640;
     final dark = app.readerTheme == 'dark';
@@ -302,28 +358,22 @@ class ReaderPage extends StatelessWidget {
                 ),
                 if (chapters.length > 1) ...[
                   const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.slate100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.slate200),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        value: idx,
-                        isDense: true,
-                        style: cairo(12, weight: FontWeight.w700, color: AppColors.slate800),
-                        dropdownColor: Colors.white,
-                        items: [
-                          for (var i = 0; i < chapters.length; i++)
-                            DropdownMenuItem(
-                                value: i,
-                                child: Text(chapters[i].title,
-                                    style: cairo(12,
-                                        weight: FontWeight.w700, color: AppColors.slate800))),
-                        ],
-                        onChanged: (v) => app.setChapter(v ?? 0),
+                  Material(
+                    color: AppColors.slate100,
+                    shape: StadiumBorder(side: BorderSide(color: AppColors.slate200)),
+                    child: InkWell(
+                      customBorder: const StadiumBorder(),
+                      onTap: () => _chaptersSheet(context, chapters, idx),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.format_list_bulleted,
+                              size: 16, color: AppColors.slate800),
+                          const SizedBox(width: 6),
+                          Text('الفصول',
+                              style: cairo(12,
+                                  weight: FontWeight.w700, color: AppColors.slate800)),
+                        ]),
                       ),
                     ),
                   ),
