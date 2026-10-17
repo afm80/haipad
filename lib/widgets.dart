@@ -384,27 +384,8 @@ class _Logo extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 40,
-          height: 40,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: const LinearGradient(
-              begin: Alignment.bottomLeft,
-              end: Alignment.topRight,
-              colors: [AppColors.brand600, AppColors.amber500],
-            ),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
-                  blurRadius: 6,
-                  offset: const Offset(0, 4)),
-            ],
-          ),
-          child: Text('ح',
-              style: cairo(20, weight: FontWeight.w800, color: Colors.white)),
-        ),
+        Image.asset('assets/images/logo_mark.png',
+            width: 40, height: 40, filterQuality: FilterQuality.high),
         const SizedBox(width: 8),
         Column(
           mainAxisSize: MainAxisSize.min,

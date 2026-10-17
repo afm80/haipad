@@ -105,7 +105,6 @@ class _LoginPageState extends State<LoginPage> {
         backgroundColor: Colors.white,
         body: Stack(
           children: [
-            Positioned.fill(child: CustomPaint(painter: _BlobPainter())),
             SafeArea(
               child: Column(
                 children: [
@@ -359,20 +358,8 @@ class _Logo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        brandName(30, height: 1),
-        const SizedBox(width: 8),
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-              color: AppColors.brand500, borderRadius: BorderRadius.circular(10)),
-          child: const Icon(Icons.auto_stories, color: Colors.white, size: 20),
-        ),
-      ],
-    );
+    return Image.asset('assets/images/logo_full.png',
+        height: 44, filterQuality: FilterQuality.high);
   }
 }
 
@@ -399,41 +386,6 @@ class _GoogleG extends StatelessWidget {
       ),
     );
   }
-}
-
-/// الأشكال البرتقالية على جانبي الصفحة.
-class _BlobPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()..color = AppColors.brand500;
-    final w = size.width, h = size.height;
-    final narrow = w < 700;
-    final k = narrow ? 0.45 : 1.0;
-
-    // الجانب الأيسر: أوراق في الأعلى
-    for (final c in [
-      [10.0, 60.0, 150.0],
-      [-10.0, 210.0, 150.0],
-      [40.0, 330.0, 95.0],
-      [70.0, 120.0, 110.0],
-    ]) {
-      canvas.drawCircle(Offset(c[0] * k, c[1] * k), c[2] * k, p);
-    }
-
-    // الجانب الأيمن: شريط بأوراق على كامل الارتفاع
-    final step = 200.0 * k;
-    var y = 0.0;
-    var i = 0;
-    while (y < h + step) {
-      final r = (i.isEven ? 140.0 : 115.0) * k;
-      canvas.drawCircle(Offset(w + 10 * k, y), r, p);
-      y += step * 0.78;
-      i++;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// رسم الكمبيوتر والهاتف (محتوى Haipad الخاص).
