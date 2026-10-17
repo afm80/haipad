@@ -494,7 +494,7 @@ class StoryCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AspectRatio(
-                aspectRatio: 3 / 4,
+                aspectRatio: 2 / 3,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -618,7 +618,7 @@ class StoriesGrid extends StatelessWidget {
           crossAxisCount: cols,
           crossAxisSpacing: gap,
           mainAxisSpacing: gap,
-          mainAxisExtent: cardW * 4 / 3 + 100,
+          mainAxisExtent: cardW * 3 / 2 + 100,
         ),
         itemBuilder: (_, i) => StoryCard(story: stories[i]),
       );

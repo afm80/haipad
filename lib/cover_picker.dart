@@ -2,10 +2,10 @@
 import 'dart:async';
 import 'dart:html' as html;
 
-/// يفتح نافذة اختيار صورة من الجهاز، ثم يقصّها بنسبة 3:4 ويصغّرها ويضغطها
+/// يفتح نافذة اختيار صورة من الجهاز، ثم يقصّها بنسبة 2:3 ويصغّرها ويضغطها
 /// ويعيدها كنص (data URL) جاهز للحفظ مع القصة. يعيد null إذا أُلغي الاختيار.
 Future<String?> pickCoverImage() {
-  const outW = 300, outH = 400;
+  const outW = 300, outH = 450;
   final done = Completer<String?>();
   final input = html.FileUploadInputElement()..accept = 'image/*';
 
@@ -30,7 +30,7 @@ Future<String?> pickCoverImage() {
           done.completeError('الملف ليس صورة صالحة.');
           return;
         }
-        // قصّ من المنتصف بنسبة 3:4
+        // قصّ من المنتصف بنسبة 2:3
         double sx = 0, sy = 0, sw = w, sh = h;
         if (w / h > outW / outH) {
           sw = h * outW / outH;

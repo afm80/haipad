@@ -308,7 +308,7 @@ class _StoryFormDialogState extends State<StoryFormDialog> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text('تُقصّ الصورة تلقائياً بنسبة 3:4.',
+                      Text('تُقصّ الصورة تلقائياً بنسبة 2:3 (مثل واتباد).',
                           style: cairo(11, color: AppColors.slate400)),
                       if (_coverError != null) errorLine(_coverError!),
                     ],
