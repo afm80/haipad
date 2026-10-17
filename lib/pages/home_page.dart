@@ -12,59 +12,9 @@ class HomePage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _genres(),
-        const SizedBox(height: 32),
         _featured(context),
         const SizedBox(height: 32),
         _banner(w),
-      ],
-    );
-  }
-
-  Widget _genres() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.local_fire_department, size: 22, color: AppColors.brand500),
-            const SizedBox(width: 8),
-            Text('تصفّح حسب التصنيف',
-                style: cairo(20, weight: FontWeight.w700, color: AppColors.slate900)),
-            const Spacer(),
-            InkWell(
-              onTap: () => app.go('explore'),
-              child: Text('عرض الكل (23)',
-                  style: cairo(14, weight: FontWeight.w700, color: AppColors.brand500)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            children: [
-              for (final g in allGenres.take(10)) ...[
-                Material(
-                  color: Colors.white,
-                  elevation: 0.5,
-                  shape: const StadiumBorder(side: BorderSide(color: AppColors.slate200)),
-                  child: InkWell(
-                    customBorder: const StadiumBorder(),
-                    onTap: () => app.filterByGenre(g),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Text(g,
-                          style: cairo(12, weight: FontWeight.w700, color: AppColors.slate700)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-            ],
-          ),
-        ),
       ],
     );
   }
