@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data.dart';
+import '../dialogs.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -16,7 +17,7 @@ class HomePage extends StatelessWidget {
         const SizedBox(height: 32),
         _genres(),
         const SizedBox(height: 32),
-        _featured(),
+        _featured(context),
         const SizedBox(height: 32),
         _banner(w),
       ],
@@ -99,7 +100,7 @@ class HomePage extends StatelessWidget {
                             weight: FontWeight.w800, color: Colors.white, height: 1.25)),
                     const SizedBox(height: 16),
                     Text(
-                      'منصة "حكاية" تفتح لك الأبواب لنشر قصصك بكل سلاسة، والتفاعل مع آلاف القراء والكتاب بأسلوب عصري مجاني بالكامل.',
+                      'منصة haipad تفتح لك الأبواب لنشر قصصك بكل سلاسة، والتفاعل مع آلاف القراء والكتاب بأسلوب عصري مجاني بالكامل.',
                       style: cairo(wide ? 16 : 14, color: AppColors.slate300, height: 1.625),
                     ),
                     const SizedBox(height: 24),
@@ -169,26 +170,45 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _featured() {
-    final q = app.searchQuery.trim().toLowerCase();
-    final list = q.isEmpty
-        ? app.stories
-        : app.stories
-            .where((s) =>
-                s.title.toLowerCase().contains(q) ||
-                s.author.toLowerCase().contains(q) ||
-                s.genre.toLowerCase().contains(q))
-            .toList();
+  Widget _section(String title, List<Story> list) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('الأكثر قراءة هذا الأسبوع',
-            style: cairo(24, weight: FontWeight.w800, color: AppColors.slate900)),
+        Text(title, style: cairo(24, weight: FontWeight.w800, color: AppColors.slate900)),
         const SizedBox(height: 16),
-        StoriesGrid(
-          stories: list,
-          emptyText: 'لا توجد نتائج مطابقة لـ "${app.searchQuery}"',
+        StoriesGrid(stories: list),
+      ],
+    );
+  }
+
+  Widget _featured(BuildContext context) {
+    if (!app.storiesLoaded) return loadingBox();
+    final all = app.published;
+    if (all.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        decoration: cardBox(),
+        child: Column(
+          children: [
+            const Icon(Icons.auto_stories, size: 40, color: AppColors.slate300),
+            const SizedBox(height: 12),
+            Text('لا توجد قصص منشورة بعد',
+                style: cairo(18, weight: FontWeight.w700, color: AppColors.slate900)),
+            const SizedBox(height: 4),
+            Text('كن أول من ينشر قصة على المنصة!',
+                style: cairo(14, color: AppColors.slate500)),
+          ],
         ),
+      );
+    }
+    final top = sortStories(all, 'reads').take(10).toList();
+    final fresh = sortStories(all, 'new').take(10).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _section('الأكثر قراءة', top),
+        const SizedBox(height: 32),
+        _section('أحدث القصص', fresh),
       ],
     );
   }

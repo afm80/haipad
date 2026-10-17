@@ -1,25 +1,67 @@
 import 'package:flutter/material.dart';
 import '../data.dart';
+import '../dialogs.dart';
 import '../theme.dart';
 import '../widgets.dart';
+
+Widget _chip(String label, bool active, VoidCallback onTap) {
+  return Material(
+    color: active ? AppColors.brand500 : Colors.white,
+    shape: StadiumBorder(
+        side: BorderSide(color: active ? AppColors.brand500 : AppColors.slate200)),
+    child: InkWell(
+      customBorder: const StadiumBorder(),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Text(label,
+            style: cairo(12,
+                weight: FontWeight.w700,
+                color: active ? Colors.white : AppColors.slate700)),
+      ),
+    ),
+  );
+}
 
 // ───────────── استكشف ─────────────
 class ExplorePage extends StatelessWidget {
   ExplorePage({super.key});
+
+  List<Story> _filtered() {
+    var l = app.published;
+    if (app.genreFilter != 'الجميع') {
+      l = l.where((s) => s.genre == app.genreFilter).toList();
+    }
+    if (app.statusFilter == 'مكتملة') l = l.where((s) => s.completed).toList();
+    if (app.statusFilter == 'مستمرة') l = l.where((s) => !s.completed).toList();
+    final q = app.searchQuery.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      l = l
+          .where((s) =>
+              s.title.toLowerCase().contains(q) ||
+              s.author.toLowerCase().contains(q) ||
+              s.genre.toLowerCase().contains(q) ||
+              s.tags.any((t) => t.toLowerCase().contains(q)))
+          .toList();
+    }
+    return sortStories(l, app.sort);
+  }
 
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
     final cols = w >= 1024 ? 6 : (w >= 768 ? 4 : (w >= 640 ? 3 : 2));
     final all = app.genreFilter == 'الجميع';
-    final list = all ? app.stories : app.stories.where((s) => s.genre == app.genreFilter).toList();
+    final q = app.searchQuery.trim();
+    final list = _filtered();
+    final filtered = !all || q.isNotEmpty || app.statusFilter != 'الكل';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const PageHeading(
-          'استكشف جميع التصنيفات (23 تصنيفاً)',
-          'اختر التصنيف المفضل لديك للوصول إلى آلاف الروايات والقصص المكتوبة بأقلام عربية مبدعة.',
+          'استكشف القصص',
+          'تصفّح حسب التصنيف أو ابحث بالعنوان أو الكاتب أو الوسوم.',
         ),
         const SizedBox(height: 24),
         GridView.builder(
@@ -35,12 +77,13 @@ class ExplorePage extends StatelessWidget {
           ),
           itemBuilder: (_, i) {
             final g = allGenres[i];
+            final active = app.genreFilter == g;
             return Material(
-              color: Colors.white,
+              color: active ? AppColors.brand50 : Colors.white,
               elevation: 0.5,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: AppColors.slate200),
+                side: BorderSide(color: active ? AppColors.brand500 : AppColors.slate200),
               ),
               child: InkWell(
                 customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -62,10 +105,43 @@ class ExplorePage extends StatelessWidget {
           },
         ),
         const SizedBox(height: 24),
-        Text(all ? 'الجميع (كل القصص)' : 'تصنيف: ${app.genreFilter}',
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text('الحالة:', style: cairo(12, weight: FontWeight.w700, color: AppColors.slate500)),
+            for (final st in const ['الكل', 'مستمرة', 'مكتملة'])
+              _chip(st, app.statusFilter == st, () => app.setStatus(st)),
+            const SizedBox(width: 12),
+            Text('الترتيب:', style: cairo(12, weight: FontWeight.w700, color: AppColors.slate500)),
+            _chip('الأكثر قراءة', app.sort == 'reads', () => app.setSort('reads')),
+            _chip('الأحدث', app.sort == 'new', () => app.setSort('new')),
+            _chip('الأكثر إعجاباً', app.sort == 'votes', () => app.setSort('votes')),
+            if (filtered)
+              InkWell(
+                onTap: app.clearFilters,
+                child: Text('مسح التصفية',
+                    style: cairo(12, weight: FontWeight.w700, color: AppColors.brand500)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Text(
+            q.isNotEmpty
+                ? 'نتائج البحث عن "$q"'
+                : (all ? 'كل القصص' : 'تصنيف: ${app.genreFilter}'),
             style: cairo(24, weight: FontWeight.w700, color: AppColors.slate900)),
         const SizedBox(height: 16),
-        StoriesGrid(stories: list, emptyText: 'لا توجد قصص حتى الآن في هذا التصنيف.'),
+        if (!app.storiesLoaded)
+          loadingBox()
+        else
+          StoriesGrid(
+            stories: list,
+            emptyText: filtered
+                ? 'لا توجد قصص مطابقة.'
+                : 'لا توجد قصص منشورة بعد. كن أول من ينشر!',
+          ),
       ],
     );
   }
@@ -83,7 +159,7 @@ class LibraryPage extends StatelessWidget {
       children: [
         PageHeading(
           'مكتبتي الشخصية',
-          'القصص التي حفظتها للقراءة لاحقاً ومتابعة تحديثاتها.',
+          'القصص التي حفظتها للقراءة لاحقاً.',
           trailing: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
@@ -95,10 +171,13 @@ class LibraryPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        StoriesGrid(
-          stories: list,
-          emptyText: 'مكتبتك فارغة حالياً. تصفح القصص وأضف ما يعجبك هنا!',
-        ),
+        if (!app.storiesLoaded)
+          loadingBox()
+        else
+          StoriesGrid(
+            stories: list,
+            emptyText: 'مكتبتك فارغة حالياً. تصفح القصص وأضف ما يعجبك هنا!',
+          ),
       ],
     );
   }
@@ -110,23 +189,23 @@ class MyStoriesPage extends StatelessWidget {
 
   Widget _tab(String label, String key) {
     final active = app.myTab == key;
-    return InkWell(
-      onTap: () {
-        app.myTab = key;
-        app.refresh();
-      },
-      child: Container(
-        padding: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-                color: active ? AppColors.brand500 : Colors.transparent, width: 2),
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(end: 16),
+      child: InkWell(
+        onTap: () => app.setMyTab(key),
+        child: Container(
+          padding: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                  color: active ? AppColors.brand500 : Colors.transparent, width: 2),
+            ),
           ),
+          child: Text(label,
+              style: cairo(14,
+                  weight: FontWeight.w700,
+                  color: active ? AppColors.brand500 : AppColors.slate500)),
         ),
-        child: Text(label,
-            style: cairo(14,
-                weight: FontWeight.w700,
-                color: active ? AppColors.brand500 : AppColors.slate500)),
       ),
     );
   }
@@ -134,7 +213,10 @@ class MyStoriesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
-    final mine = app.myStories;
+    final drafts = app.myTab == 'drafts';
+    final mine = app.myStories
+        .where((s) => drafts ? s.publishedChapters == 0 : s.publishedChapters > 0)
+        .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -170,14 +252,15 @@ class MyStoriesPage extends StatelessWidget {
           child: Row(
             children: [
               _tab('القصص المنشورة', 'published'),
-              const SizedBox(width: 16),
               _tab('المسودات', 'drafts'),
             ],
           ),
         ),
         const SizedBox(height: 24),
-        if (mine.isEmpty)
-          Text('لم تقم بكتابة أي قصة بعد.', style: cairo(14, color: AppColors.slate400)),
+        if (!app.storiesLoaded)
+          loadingBox()
+        else if (mine.isEmpty)
+          emptyLine(drafts ? 'لا توجد مسودات.' : 'لم تنشر أي قصة بعد.'),
         for (final s in mine) ...[
           _item(context, s, w),
           const SizedBox(height: 16),
@@ -203,44 +286,37 @@ class MyStoriesPage extends StatelessWidget {
               Text(s.title,
                   style: cairo(16, weight: FontWeight.w700, color: AppColors.slate900)),
               const SizedBox(height: 4),
-              Text('${s.chapters.length} فصول منشورة',
+              Text(
+                  '${s.publishedChapters} فصول منشورة · ${fmt(s.reads)} قراءة · ${s.votes} إعجاب'
+                  '${s.completed ? ' · مكتملة' : ''}',
                   style: cairo(12, color: AppColors.slate500)),
             ],
           ),
         ),
       ],
     );
-    final buttons = Row(
-      mainAxisSize: MainAxisSize.min,
+    Widget small(String t, VoidCallback onTap, {bool primary = false}) => Material(
+          color: primary ? AppColors.brand500 : AppColors.slate100,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(t,
+                  style: cairo(12,
+                      weight: FontWeight.w700,
+                      color: primary ? Colors.white : AppColors.slate800)),
+            ),
+          ),
+        );
+    final buttons = Wrap(
+      spacing: 8,
+      runSpacing: 8,
       children: [
-        Material(
-          color: AppColors.slate100,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => app.openStory(s.id),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text('قراءة',
-                  style: cairo(12, weight: FontWeight.w700, color: AppColors.slate800)),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Material(
-          color: AppColors.brand500,
-          borderRadius: BorderRadius.circular(12),
-          elevation: 2,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => showAlert(context, 'خاصية إضافة فصل جديد مسودة جاهزة'),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text('+ فصل جديد',
-                  style: cairo(12, weight: FontWeight.w700, color: Colors.white)),
-            ),
-          ),
-        ),
+        if (s.publishedChapters > 0) small('قراءة', () => app.openStory(s.id)),
+        small('إدارة الفصول', () => showManageDialog(context, s)),
+        small('+ فصل جديد', () => showChapterDialog(context, s), primary: true),
       ],
     );
     return Container(
@@ -248,7 +324,9 @@ class MyStoriesPage extends StatelessWidget {
       decoration: cardBox(radius: 16),
       child: w >= 640
           ? Row(children: [Expanded(child: info), const SizedBox(width: 16), buttons])
-          : Column(children: [info, const SizedBox(height: 16), buttons]),
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [info, const SizedBox(height: 16), buttons]),
     );
   }
 }
