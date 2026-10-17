@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../data.dart';
-import '../dialogs.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -13,112 +12,12 @@ class HomePage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _hero(context, w),
-        const SizedBox(height: 32),
         _genres(),
         const SizedBox(height: 32),
         _featured(context),
         const SizedBox(height: 32),
         _banner(w),
       ],
-    );
-  }
-
-  Widget _pillButton(String text, VoidCallback onTap, {bool primary = true}) {
-    return Material(
-      color: primary ? AppColors.brand500 : Colors.white.withOpacity(0.1),
-      shape: StadiumBorder(
-        side: primary ? BorderSide.none : BorderSide(color: Colors.white.withOpacity(0.2)),
-      ),
-      elevation: primary ? 6 : 0,
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: Text(text, style: cairo(14, weight: FontWeight.w700, color: Colors.white)),
-        ),
-      ),
-    );
-  }
-
-  Widget _hero(BuildContext context, double w) {
-    final wide = w >= 640;
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.slate900,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate800),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 25,
-              spreadRadius: -5,
-              offset: const Offset(0, 20)),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -40,
-            bottom: -40,
-            child: Container(
-              width: 256,
-              height: 256,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [
-                  AppColors.brand500.withOpacity(0.2),
-                  AppColors.brand500.withOpacity(0),
-                ]),
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(wide ? 40 : 24),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 672),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.brand500.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: AppColors.brand500.withOpacity(0.3)),
-                      ),
-                      child: Text('مجتمع الكتاب والقرّاء العرب',
-                          style: cairo(12, weight: FontWeight.w700, color: Colors.white)),
-                    ),
-                    const SizedBox(height: 16),
-                    Text('شارِك شغفك.. اكتب رِوايتك واكتشف عوالم جديدة',
-                        style: cairo(wide ? 48 : 30,
-                            weight: FontWeight.w800, color: Colors.white, height: 1.25)),
-                    const SizedBox(height: 16),
-                    Text(
-                      'منصة haipad تفتح لك الأبواب لنشر قصصك بكل سلاسة، والتفاعل مع آلاف القراء والكتاب بأسلوب عصري مجاني بالكامل.',
-                      style: cairo(wide ? 16 : 14, color: AppColors.slate300, height: 1.625),
-                    ),
-                    const SizedBox(height: 24),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        _pillButton('ابدأ الكتابة الآن', () => showWriteDialog(context)),
-                        _pillButton('استكشف القصص', () => app.go('explore'), primary: false),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
