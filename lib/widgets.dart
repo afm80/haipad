@@ -2,6 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'data.dart';
 import 'theme.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'auth_service.dart';
+import 'login_dialog.dart';
 
 Future<void> showAlert(BuildContext context, String msg) {
   return showDialog<void>(
@@ -143,7 +146,7 @@ class AppHeader extends StatelessWidget {
                 const SizedBox(width: 16),
                 _writeButton(context, w >= 640),
                 const SizedBox(width: 12),
-                _auth(w >= 640),
+                _auth(context, w >= 640),
               ],
             ),
           ),
@@ -200,7 +203,13 @@ class AppHeader extends StatelessWidget {
       shadowColor: AppColors.brand500.withOpacity(0.4),
       child: InkWell(
         customBorder: const StadiumBorder(),
-        onTap: () => showWriteDialog(context),
+        onTap: () {
+          if (AuthService.user == null) {
+            showLoginDialog(context);
+          } else {
+            showWriteDialog(context);
+          }
+        },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
@@ -219,27 +228,71 @@ class AppHeader extends StatelessWidget {
     );
   }
 
-  Widget _auth(bool showName) {
-    return InkWell(
-      onTap: () => app.go('profile'),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.brand500, width: 2),
-            ),
-            child: ClipOval(child: netImage(app.userAvatar)),
-          ),
-          if (showName) ...[
-            const SizedBox(width: 8),
-            Text(app.userName, style: cairo(12, weight: FontWeight.w700)),
+  Widget _auth(BuildContext context, bool showName) {
+    return StreamBuilder<User?>(
+      stream: AuthService.changes,
+      builder: (context, snap) {
+        final u = snap.data;
+        if (u == null) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton(
+                onPressed: () => showLoginDialog(context),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.brand500, width: 1.5),
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+                child: Text('تسجيل الدخول',
+                    style: cairo(13, weight: FontWeight.w800, color: AppColors.brand600)),
+              ),
+              if (showName) ...[
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () => showLoginDialog(context, signUp: true),
+                  child: Text('إنشاء حساب',
+                      style: cairo(13, weight: FontWeight.w700, color: AppColors.slate700)),
+                ),
+              ],
+            ],
+          );
+        }
+        return PopupMenuButton<String>(
+          tooltip: '',
+          onSelected: (v) {
+            if (v == 'profile') app.go('profile');
+            if (v == 'logout') AuthService.signOut();
+          },
+          itemBuilder: (_) => [
+            PopupMenuItem(
+                value: 'profile',
+                child: Text('ملفي الشخصي', style: cairo(13, weight: FontWeight.w700))),
+            PopupMenuItem(
+                value: 'logout',
+                child: Text('تسجيل الخروج',
+                    style: cairo(13, weight: FontWeight.w700, color: AppColors.red600))),
           ],
-        ],
-      ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.brand500, width: 2),
+                ),
+                child: ClipOval(child: netImage(u.photoURL ?? app.userAvatar)),
+              ),
+              if (showName) ...[
+                const SizedBox(width: 8),
+                Text(app.userName, style: cairo(12, weight: FontWeight.w700)),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }

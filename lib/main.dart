@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'auth_service.dart';
 import 'app_shell.dart';
 import 'theme.dart';
 
@@ -17,6 +19,7 @@ void main() async {
         appId: "1:949476046493:web:85d0147fa2e87cc21d0674",
       ),
     );
+    FirebaseAuth.instance.authStateChanges().listen(AuthService.syncProfile);
   } catch (_) {}
 
   runApp(const HaipadApp());

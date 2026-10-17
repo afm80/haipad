@@ -187,6 +187,12 @@ class AppState extends ChangeNotifier {
   // ───── أفعال ─────
   void refresh() => notifyListeners();
 
+  void setUser({required String name, String? avatar}) {
+    userName = name;
+    if (avatar != null && avatar.isNotEmpty) userAvatar = avatar;
+    notifyListeners();
+  }
+
   void go(String p) {
     page = p;
     notifyListeners();
