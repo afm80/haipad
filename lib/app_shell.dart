@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'auth_service.dart';
+import 'login_page.dart';
 import 'data.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -32,6 +35,23 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: AuthService.changes,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: Colors.white,
+            body: Center(
+                child: CircularProgressIndicator(color: AppColors.brand500)),
+          );
+        }
+        if (snap.data == null) return const LoginPage();
+        return _shell(context);
+      },
+    );
+  }
+
+  Widget _shell(BuildContext context) {
     return ListenableBuilder(
       listenable: app,
       builder: (context, _) {

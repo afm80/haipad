@@ -4,7 +4,6 @@ import 'data.dart';
 import 'theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'auth_service.dart';
-import 'login_dialog.dart';
 
 Future<void> showAlert(BuildContext context, String msg) {
   return showDialog<void>(
@@ -203,13 +202,7 @@ class AppHeader extends StatelessWidget {
       shadowColor: AppColors.brand500.withOpacity(0.4),
       child: InkWell(
         customBorder: const StadiumBorder(),
-        onTap: () {
-          if (AuthService.user == null) {
-            showLoginDialog(context);
-          } else {
-            showWriteDialog(context);
-          }
-        },
+        onTap: () => showWriteDialog(context),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
@@ -233,31 +226,7 @@ class AppHeader extends StatelessWidget {
       stream: AuthService.changes,
       builder: (context, snap) {
         final u = snap.data;
-        if (u == null) {
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              OutlinedButton(
-                onPressed: () => showLoginDialog(context),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.brand500, width: 1.5),
-                  shape: const StadiumBorder(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                ),
-                child: Text('تسجيل الدخول',
-                    style: cairo(13, weight: FontWeight.w800, color: AppColors.brand600)),
-              ),
-              if (showName) ...[
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: () => showLoginDialog(context, signUp: true),
-                  child: Text('إنشاء حساب',
-                      style: cairo(13, weight: FontWeight.w700, color: AppColors.slate700)),
-                ),
-              ],
-            ],
-          );
-        }
+        if (u == null) return const SizedBox.shrink();
         return PopupMenuButton<String>(
           tooltip: '',
           onSelected: (v) {

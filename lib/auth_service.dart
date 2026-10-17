@@ -7,7 +7,13 @@ class AuthService {
 
   static User? get user => _auth.currentUser;
 
-  static Stream<User?> get changes => _auth.authStateChanges();
+  static Stream<User?> get changes {
+    try {
+      return _auth.authStateChanges();
+    } catch (_) {
+      return Stream.value(null);
+    }
+  }
 
   /// ينسخ بيانات المستخدم الحقيقي إلى حالة التطبيق (الاسم والصورة).
   static void syncProfile(User? u) {
@@ -21,6 +27,11 @@ class AuthService {
   static Future<void> signInWithGoogle() async {
     final provider = GoogleAuthProvider()..setCustomParameters({'prompt': 'select_account'});
     final cred = await _auth.signInWithPopup(provider);
+    syncProfile(cred.user);
+  }
+
+  static Future<void> signInWithFacebook() async {
+    final cred = await _auth.signInWithPopup(FacebookAuthProvider());
     syncProfile(cred.user);
   }
 
