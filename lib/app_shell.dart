@@ -102,14 +102,23 @@ class AppShell extends StatelessWidget {
           child: AppHeader(),
         ),
         bottomNavigationBar: w >= 1100 ? null : MobileBar(),
-        body: SingleChildScrollView(
-          key: ValueKey('${app.page}/${app.viewUid}/${app.readingId}'),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1280),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(px, 24, px, 24),
-                child: _page(),
+        body: NotificationListener<ScrollNotification>(
+          onNotification: (n) {
+            // عند الاقتراب من نهاية صفحة الاستكشاف نحمّل المزيد
+            if (n.depth == 0 && app.page == 'explore' && n.metrics.extentAfter < 500) {
+              app.loadMore();
+            }
+            return false;
+          },
+          child: SingleChildScrollView(
+            key: ValueKey('${app.page}/${app.viewUid}/${app.readingId}'),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1280),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(px, 24, px, 24),
+                  child: _page(),
+                ),
               ),
             ),
           ),

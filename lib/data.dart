@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'models.dart';
 import 'repo.dart';
@@ -58,8 +59,34 @@ class AppState extends ChangeNotifier {
   String? uid;
   UserProfile? me;
   String? fatal;
-  List<Story> stories = const [];
-  bool storiesLoaded = false;
+  // الصفحة الرئيسية
+  List<Story> homeTop = const [];
+  List<Story> homeFresh = const [];
+  bool homeLoaded = false;
+  DateTime? _homeStamp;
+
+  // صفحة الاستكشاف (تحميل تدريجي)
+  static const pageSize = 20;
+  List<Story> _feedAll = const [];
+  bool feedLoaded = false;
+  bool feedLoading = false;
+  bool _feedPaged = true; // true: ترقيم من الخادم، false: تصفية/بحث ويُعرض تدريجياً
+  bool _hasMoreServer = false;
+  int _shown = pageSize;
+  int _feedToken = 0;
+  DateTime? _feedStamp;
+  DocumentSnapshot<Map<String, dynamic>>? _feedLast;
+  Timer? _searchTimer;
+
+  // قصصي
+  List<Story> _mine = const [];
+  bool mineLoaded = false;
+
+  // المكتبة
+  List<Story> libraryStories = const [];
+  bool libraryLoaded = false;
+  String _libKey = '';
+
   Set<String> library = {};
   Set<String> following = {};
   List<ReadingList> lists = const [];
@@ -70,10 +97,135 @@ class AppState extends ChangeNotifier {
   String get userName => me?.name ?? 'مستخدم';
   String get userAvatar => me?.avatar ?? '';
 
-  List<Story> get published => stories.where((s) => s.publishedChapters > 0).toList();
-  List<Story> get myStories => stories.where((s) => s.authorId == uid).toList();
-  List<Story> publishedOf(String u) =>
-      stories.where((s) => s.authorId == u && s.publishedChapters > 0).toList();
+  List<Story> get myStories => _mine;
+
+  List<Story> get feed => _feedPaged ? _feedAll : _feedAll.take(_shown).toList();
+  bool get feedHasMore => _feedPaged ? _hasMoreServer : _feedAll.length > _shown;
+
+  static bool _isPublished(Story s) => s.publishedChapters > 0;
+
+  bool get _hasFilter => genreFilter != 'الجميع' || statusFilter != 'الكل';
+
+  // ───── تحميل الصفحة الرئيسية ─────
+  Future<void> loadHome() async {
+    try {
+      final r = await Future.wait<List<Story>>([
+        Repo.topStories('reads', 16),
+        Repo.topStories('createdAt', 16),
+      ]);
+      if (uid == null) return;
+      homeTop = r[0].where(_isPublished).take(10).toList();
+      homeFresh = r[1].where(_isPublished).take(10).toList();
+      homeLoaded = true;
+      _homeStamp = DateTime.now();
+    } catch (e) {
+      fail(e);
+      return;
+    }
+    notifyListeners();
+  }
+
+  bool _stale(DateTime? t) =>
+      t == null || DateTime.now().difference(t).inSeconds > 90;
+
+  // ───── تحميل صفحة الاستكشاف ─────
+  List<Story> _applyFilters(List<Story> l) {
+    var r = l;
+    if (genreFilter != 'الجميع') r = r.where((s) => s.genre == genreFilter).toList();
+    if (statusFilter == 'مكتملة') r = r.where((s) => s.completed).toList();
+    if (statusFilter == 'مستمرة') r = r.where((s) => !s.completed).toList();
+    return r;
+  }
+
+  Future<void> reloadFeed() async {
+    final token = ++_feedToken;
+    feedLoading = true;
+    feedLoaded = false;
+    _shown = pageSize;
+    _feedLast = null;
+    _hasMoreServer = false;
+    notifyListeners();
+    try {
+      final q = searchQuery.trim();
+      List<Story> list;
+      if (q.isNotEmpty) {
+        _feedPaged = false;
+        list = _applyFilters(await Repo.searchStories(q));
+      } else if (_hasFilter) {
+        _feedPaged = false;
+        list = await Repo.filteredStories(
+          genre: genreFilter == 'الجميع' ? null : genreFilter,
+          completed: statusFilter == 'الكل' ? null : statusFilter == 'مكتملة',
+        );
+      } else {
+        _feedPaged = true;
+        final page = await Repo.feedPage(sort: sort, limit: pageSize);
+        _feedLast = page.last;
+        _hasMoreServer = page.rawCount >= pageSize;
+        list = page.stories;
+      }
+      if (token != _feedToken) return;
+      list = list.where(_isPublished).toList();
+      _feedAll = _feedPaged ? list : sortStories(list, sort);
+      _feedStamp = DateTime.now();
+    } catch (e) {
+      if (token != _feedToken) return;
+      fail(e);
+      return;
+    }
+    feedLoaded = true;
+    feedLoading = false;
+    notifyListeners();
+  }
+
+  /// يُستدعى عند الاقتراب من نهاية الصفحة (أو بزر «عرض المزيد»).
+  Future<void> loadMore() async {
+    if (feedLoading || !feedLoaded || !feedHasMore) return;
+    if (!_feedPaged) {
+      _shown += pageSize;
+      notifyListeners();
+      return;
+    }
+    final token = _feedToken;
+    feedLoading = true;
+    notifyListeners();
+    try {
+      final page = await Repo.feedPage(sort: sort, limit: pageSize, after: _feedLast);
+      if (token != _feedToken) return;
+      _feedLast = page.last ?? _feedLast;
+      _hasMoreServer = page.rawCount >= pageSize;
+      final have = _feedAll.map((s) => s.id).toSet();
+      _feedAll = [
+        ..._feedAll,
+        ...page.stories.where((s) => _isPublished(s) && !have.contains(s.id)),
+      ];
+    } catch (_) {
+      if (token == _feedToken) _hasMoreServer = false;
+    }
+    if (token != _feedToken) return;
+    feedLoading = false;
+    notifyListeners();
+  }
+
+  // ───── تحميل المكتبة ─────
+  Future<void> loadLibrary() async {
+    final ids = library.toList()..sort();
+    final key = ids.join(',');
+    if (libraryLoaded && key == _libKey) return;
+    _libKey = key;
+    libraryLoaded = false;
+    notifyListeners();
+    try {
+      final l = ids.isEmpty ? <Story>[] : await Repo.storiesByIds(ids);
+      if (key != _libKey) return;
+      libraryStories = l;
+      libraryLoaded = true;
+    } catch (e) {
+      fail(e);
+      return;
+    }
+    notifyListeners();
+  }
 
   // ───── دورة الحياة ─────
   void start(String u) {
@@ -85,13 +237,14 @@ class AppState extends ChangeNotifier {
         me = p;
         notifyListeners();
       }, onError: fail),
-      Repo.storiesStream().listen((l) {
-        stories = l;
-        storiesLoaded = true;
+      Repo.authorStoriesStream(u).listen((l) {
+        _mine = l;
+        mineLoaded = true;
         notifyListeners();
       }, onError: fail),
       Repo.libraryStream(u).listen((s) {
         library = s;
+        if (page == 'library') loadLibrary();
         notifyListeners();
       }, onError: fail),
       Repo.followingStream(u).listen((s) {
@@ -103,6 +256,7 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }, onError: fail),
     ]);
+    loadHome();
     notifyListeners();
   }
 
@@ -120,8 +274,23 @@ class AppState extends ChangeNotifier {
     uid = null;
     me = null;
     fatal = null;
-    stories = const [];
-    storiesLoaded = false;
+    _searchTimer?.cancel();
+    _feedToken++;
+    homeTop = const [];
+    homeFresh = const [];
+    homeLoaded = false;
+    _homeStamp = null;
+    _feedAll = const [];
+    feedLoaded = false;
+    feedLoading = false;
+    _hasMoreServer = false;
+    _feedStamp = null;
+    _feedLast = null;
+    _mine = const [];
+    mineLoaded = false;
+    libraryStories = const [];
+    libraryLoaded = false;
+    _libKey = '';
     library = {};
     following = {};
     lists = const [];
@@ -141,19 +310,27 @@ class AppState extends ChangeNotifier {
   void go(String p) {
     page = p;
     if (p == 'profile') viewUid = null;
+    if (p == 'home' && (!homeLoaded || _stale(_homeStamp))) loadHome();
+    if (p == 'explore' && (!feedLoaded || _stale(_feedStamp)) && !feedLoading) {
+      reloadFeed();
+    }
+    if (p == 'library') loadLibrary();
     notifyListeners();
   }
 
   void filterByGenre(String g) {
     genreFilter = g;
     page = 'explore';
-    notifyListeners();
+    reloadFeed();
   }
 
   void setSearch(String q) {
     searchQuery = q;
     if (q.trim().isNotEmpty) page = 'explore';
     notifyListeners();
+    // ننتظر توقف الكتابة قليلاً قبل الاستعلام
+    _searchTimer?.cancel();
+    _searchTimer = Timer(const Duration(milliseconds: 450), reloadFeed);
   }
 
   void openStory(String id) {
@@ -230,19 +407,24 @@ class AppState extends ChangeNotifier {
 
   void setStatus(String s) {
     statusFilter = s;
-    notifyListeners();
+    reloadFeed();
   }
 
   void setSort(String s) {
     sort = s;
-    notifyListeners();
+    if (_feedPaged) {
+      reloadFeed();
+    } else {
+      _feedAll = sortStories(_feedAll, s);
+      notifyListeners();
+    }
   }
 
   void clearFilters() {
     genreFilter = 'الجميع';
     statusFilter = 'الكل';
     searchQuery = '';
-    notifyListeners();
+    reloadFeed();
   }
 
   // ───── أفعال تكتب في Firestore ─────

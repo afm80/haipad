@@ -2,6 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'models.dart';
 
+/// صفحة نتائج: القصص + آخر مستند (للمتابعة) + عدد المستندات الخام.
+class StoryPage {
+  final List<Story> stories;
+  final DocumentSnapshot<Map<String, dynamic>>? last;
+  final int rawCount;
+  const StoryPage(this.stories, this.last, this.rawCount);
+}
+
 /// كل القراءة والكتابة في Firestore تمر من هنا.
 class Repo {
   static FirebaseFirestore get _db => FirebaseFirestore.instance;
@@ -84,12 +92,86 @@ class Repo {
     return b.commit();
   }
 
-  // ───────────── القصص ─────────────
-  static Stream<List<Story>> storiesStream() => _stories
-      .orderBy('createdAt', descending: true)
-      .limit(300)
-      .snapshots()
-      .map((q) => q.docs.map(Story.fromDoc).toList());
+  // ───────────── القصص (تحميل تدريجي) ─────────────
+  /// صفحة من كل القصص مرتّبة (reads | new | votes)، تُكمَل بـ [after].
+  static Future<StoryPage> feedPage({
+    required String sort,
+    required int limit,
+    DocumentSnapshot<Map<String, dynamic>>? after,
+  }) async {
+    final field = sort == 'new' ? 'createdAt' : (sort == 'votes' ? 'votes' : 'reads');
+    Query<Map<String, dynamic>> q = _stories.orderBy(field, descending: true).limit(limit);
+    if (after != null) q = q.startAfterDocument(after);
+    final s = await q.get();
+    return StoryPage(
+        s.docs.map(Story.fromDoc).toList(), s.docs.isEmpty ? null : s.docs.last, s.docs.length);
+  }
+
+  /// أعلى القصص بحسب حقل (reads | createdAt) للصفحة الرئيسية.
+  static Future<List<Story>> topStories(String field, int limit) async {
+    final s = await _stories.orderBy(field, descending: true).limit(limit).get();
+    return s.docs.map(Story.fromDoc).toList();
+  }
+
+  /// قصص تصنيف و/أو حالة (بدون ترتيب من الخادم حتى لا نحتاج فهارس مركّبة).
+  static Future<List<Story>> filteredStories(
+      {String? genre, bool? completed, int limit = 60}) async {
+    Query<Map<String, dynamic>> q = _stories;
+    if (genre != null) q = q.where('genre', isEqualTo: genre);
+    if (completed != null) q = q.where('completed', isEqualTo: completed);
+    final s = await q.limit(limit).get();
+    return s.docs.map(Story.fromDoc).toList();
+  }
+
+  /// بحث: بداية العنوان، أو بداية اسم الكاتب، أو وسم مطابق تماماً.
+  static Future<List<Story>> searchStories(String text) async {
+    var t = text.trim();
+    if (t.startsWith('#')) t = t.substring(1).trim();
+    if (t.isEmpty) return <Story>[];
+    final end = '$t\uf8ff';
+    final res = await Future.wait([
+      _stories
+          .where('title', isGreaterThanOrEqualTo: t)
+          .where('title', isLessThanOrEqualTo: end)
+          .limit(30)
+          .get(),
+      _stories
+          .where('author', isGreaterThanOrEqualTo: t)
+          .where('author', isLessThanOrEqualTo: end)
+          .limit(30)
+          .get(),
+      _stories.where('tags', arrayContains: t).limit(30).get(),
+    ]);
+    final map = <String, Story>{};
+    for (final r in res) {
+      for (final d in r.docs) {
+        map[d.id] = Story.fromDoc(d);
+      }
+    }
+    return map.values.toList();
+  }
+
+  /// كل قصص كاتب (للوحة قصصي وللملف الشخصي).
+  static Stream<List<Story>> authorStoriesStream(String uid) => _stories
+          .where('authorId', isEqualTo: uid)
+          .snapshots()
+          .map((q) {
+        final l = q.docs.map(Story.fromDoc).toList();
+        l.sort((a, b) => _far(b.createdAt).compareTo(_far(a.createdAt)));
+        return l;
+      });
+
+  /// جلب قصص بمعرّفاتها (المكتبة وقوائم القراءة).
+  static Future<List<Story>> storiesByIds(Iterable<String> ids) async {
+    final all = ids.toList();
+    final out = <Story>[];
+    for (var i = 0; i < all.length; i += 10) {
+      final chunk = all.skip(i).take(10).toList();
+      final s = await _stories.where(FieldPath.documentId, whereIn: chunk).get();
+      out.addAll(s.docs.map(Story.fromDoc));
+    }
+    return out;
+  }
 
   static Stream<Story?> storyStream(String id) => _stories
       .doc(id)
