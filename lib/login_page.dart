@@ -173,7 +173,7 @@ class _LoginPageState extends State<LoginPage> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(_signUp ? 'إنشاء حساب في haipad' : 'تسجيل الدخول إلى haipad',
+          Text(_signUp ? 'إنشاء حساب في Haipad' : 'تسجيل الدخول إلى Haipad',
               textAlign: TextAlign.center,
               style: cairo(26, weight: FontWeight.w800, color: _ink)),
           const SizedBox(height: 36),
@@ -362,8 +362,7 @@ class _Logo extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('haipad',
-            style: cairo(30, weight: FontWeight.w800, color: AppColors.brand500, height: 1)),
+        brandName(30, height: 1),
         const SizedBox(width: 8),
         Container(
           width: 34,
@@ -437,7 +436,7 @@ class _BlobPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// رسم الكمبيوتر والهاتف (محتوى haipad الخاص).
+/// رسم الكمبيوتر والهاتف (محتوى Haipad الخاص).
 class _Showcase extends StatelessWidget {
   const _Showcase();
 
@@ -493,8 +492,7 @@ class _Showcase extends StatelessWidget {
                           decoration: const BoxDecoration(
                               border: Border(bottom: BorderSide(color: AppColors.slate200))),
                           child: Row(children: [
-                            Text('haipad',
-                                style: cairo(11, weight: FontWeight.w800, color: AppColors.brand500)),
+                            brandName(11),
                             const SizedBox(width: 12),
                             Text('تصفّح', style: cairo(8, color: AppColors.slate500)),
                             const SizedBox(width: 8),
@@ -526,7 +524,7 @@ class _Showcase extends StatelessWidget {
                         ),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-                          child: Text('أهلاً بك في haipad!',
+                          child: Text('أهلاً بك في Haipad!',
                               style: cairo(11, weight: FontWeight.w800, color: _ink)),
                         ),
                         Padding(

@@ -310,9 +310,7 @@ class _Logo extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('haipad',
-                style: cairo(24,
-                    weight: FontWeight.w800, color: AppColors.slate900, height: 1.1)),
+            brandName(24),
             Text('منصة القصص العربية',
                 style: cairo(10,
                     weight: FontWeight.w600, color: AppColors.slate400, height: 1.2)),

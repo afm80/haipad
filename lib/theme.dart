@@ -46,6 +46,23 @@ TextStyle tajawal(double size,
       fontSize: size, fontWeight: weight, color: color, height: height);
 }
 
+/// اسم الموقع: حرف H برتقالي وباقي الاسم داكن.
+Widget brandName(double size, {double height = 1.1}) {
+  return Text.rich(
+    TextSpan(children: [
+      TextSpan(
+          text: 'H',
+          style: cairo(size,
+              weight: FontWeight.w800, color: AppColors.brand500, height: height)),
+      TextSpan(
+          text: 'aipad',
+          style: cairo(size,
+              weight: FontWeight.w800, color: AppColors.slate900, height: height)),
+    ]),
+    textDirection: TextDirection.ltr,
+  );
+}
+
 double pagePadding(double w) => w >= 1024 ? 32 : (w >= 640 ? 24 : 16);
 
 String fmt(int n) =>
