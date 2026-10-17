@@ -9,26 +9,26 @@ void main() async {
   try {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: "AIzaSyD-OKFvHsvOuhqaKTPpCbY-Qczbx8uhGv4",
-        authDomain: "hekaya-1980.firebaseapp.com",
-        projectId: "hekaya-1980",
-        storageBucket: "hekaya-1980.firebasestorage.app",
-        messagingSenderId: "906095389111",
-        appId: "1:906095389111:web:fed8a98b9d2159feb2e032",
+        apiKey: "AIzaSyCCvMeXTfRpm6o_qyGTg76lxTgQolDfdAI",
+        authDomain: "haipad.firebaseapp.com",
+        projectId: "haipad",
+        storageBucket: "haipad.firebasestorage.app",
+        messagingSenderId: "949476046493",
+        appId: "1:949476046493:web:85d0147fa2e87cc21d0674",
       ),
     );
   } catch (_) {}
 
-  runApp(const HekayaApp());
+  runApp(const HaipadApp());
 }
 
-class HekayaApp extends StatelessWidget {
-  const HekayaApp({super.key});
+class HaipadApp extends StatelessWidget {
+  const HaipadApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'منصة حكاية | للقراءة والكتابة التفاعلية',
+      title: 'haipad | للقراءة والكتابة التفاعلية',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
