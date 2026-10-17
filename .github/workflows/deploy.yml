@@ -18,7 +18,7 @@ jobs:
       # إذا لم يكن مجلد web مرفوعاً، ينشئه هذا الأمر تلقائياً
       - name: Create web folder if missing
         run: |
-          if [ ! -d web ]; then
+          if [ ! -f web/index.html ]; then
             flutter create . --platforms web --project-name haipad
           fi
 
