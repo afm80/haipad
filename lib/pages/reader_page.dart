@@ -68,7 +68,7 @@ class ReaderPage extends StatelessWidget {
     final wrapAlign = wide ? WrapAlignment.start : WrapAlignment.center;
     final cover = ClipRRect(
       borderRadius: BorderRadius.circular(16),
-      child: SizedBox(width: 128, height: 176, child: netImage(s.cover)),
+      child: SizedBox(width: 128, height: 192, child: netImage(s.cover)),
     );
     final mine = s.authorId == app.uid;
     final details = Column(

@@ -274,7 +274,7 @@ class MyStoriesPage extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: SizedBox(width: 64, height: 80, child: netImage(s.cover)),
+          child: SizedBox(width: 64, height: 96, child: netImage(s.cover)),
         ),
         const SizedBox(width: 16),
         Expanded(
