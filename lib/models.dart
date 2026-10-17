@@ -27,7 +27,7 @@ Map<String, String> _map(Map<String, dynamic> m, String k) {
 }
 
 class UserProfile {
-  final String uid, name, handle, avatar, bio;
+  final String uid, name, handle, avatar, bio, banner;
   final int followers, following;
   const UserProfile({
     required this.uid,
@@ -35,6 +35,7 @@ class UserProfile {
     required this.handle,
     required this.avatar,
     required this.bio,
+    required this.banner,
     required this.followers,
     required this.following,
   });
@@ -48,6 +49,7 @@ class UserProfile {
       handle: _s(m, 'handle'),
       avatar: _s(m, 'avatar'),
       bio: _s(m, 'bio'),
+      banner: _s(m, 'banner'),
       followers: _i(m, 'followersCount'),
       following: _i(m, 'followingCount'),
     );

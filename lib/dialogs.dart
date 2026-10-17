@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'cover_picker.dart';
+import 'image_pick.dart';
 import 'data.dart';
 import 'repo.dart';
 import 'theme.dart';
@@ -115,12 +115,6 @@ Future<bool> confirmDialog(BuildContext context, String msg) async {
 }
 
 String? _req(String? v) => (v == null || v.trim().isEmpty) ? 'هذا الحقل مطلوب' : null;
-
-String? _url(String? v) {
-  final t = (v ?? '').trim();
-  if (t.isEmpty) return null;
-  return (t.startsWith('http://') || t.startsWith('https://')) ? null : 'الرابط غير صحيح';
-}
 
 List<String> _parseTags(String s) => s
     .split(RegExp(r'[,،]'))
@@ -727,7 +721,8 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
   final _form = GlobalKey<FormState>();
   late final _name = TextEditingController(text: app.me?.name ?? '');
   late final _bio = TextEditingController(text: app.me?.bio ?? '');
-  late final _avatar = TextEditingController(text: app.me?.avatar ?? '');
+  late String _avatarVal = app.me?.avatar ?? '';
+  late String _bannerVal = app.me?.banner ?? '';
   bool _busy = false;
   String? _error;
 
@@ -735,8 +730,20 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
   void dispose() {
     _name.dispose();
     _bio.dispose();
-    _avatar.dispose();
     super.dispose();
+  }
+
+  Future<void> _pick(Future<String?> Function() picker, void Function(String) set) async {
+    try {
+      final data = await picker();
+      if (data == null || !mounted) return;
+      setState(() {
+        set(data);
+        _error = null;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    }
   }
 
   Future<void> _save() async {
@@ -749,7 +756,10 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
     });
     try {
       await Repo.updateProfile(u,
-          name: _name.text.trim(), bio: _bio.text.trim(), avatar: _avatar.text.trim());
+          name: _name.text.trim(),
+          bio: _bio.text.trim(),
+          avatar: _avatarVal,
+          banner: _bannerVal);
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
@@ -789,14 +799,60 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
               decoration: fieldDeco('اكتب نبذة قصيرة...'),
             ),
             const SizedBox(height: 8),
-            _label('رابط صورة الملف الشخصي (اختياري)'),
-            TextFormField(
-              controller: _avatar,
-              validator: _url,
-              keyboardType: TextInputType.url,
-              style: cairo(14),
-              decoration: fieldDeco('https://...'),
+            _label('الصورة الشخصية'),
+            Row(children: [
+              avatarCircle(_avatarVal, _name.text.isEmpty ? 'م' : _name.text, 64),
+              const SizedBox(width: 12),
+              Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  _btn(_avatarVal.isEmpty ? 'اختيار صورة' : 'تغيير',
+                      _busy ? null : () => _pick(pickAvatarImage, (v) => _avatarVal = v)),
+                  if (_avatarVal.isNotEmpty)
+                    TextButton(
+                      onPressed: _busy ? null : () => setState(() => _avatarVal = ''),
+                      child: Text('إزالة',
+                          style: cairo(13, weight: FontWeight.w700, color: AppColors.red600)),
+                    ),
+                ],
+              ),
+            ]),
+            const SizedBox(height: 16),
+            _label('غلاف الملف الشخصي'),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: AspectRatio(
+                aspectRatio: 3,
+                child: _bannerVal.isEmpty
+                    ? Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [AppColors.brand600, AppColors.amber500, AppColors.brand600],
+                          ),
+                        ),
+                      )
+                    : netImage(_bannerVal),
+              ),
             ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _btn(_bannerVal.isEmpty ? 'اختيار صورة الغلاف' : 'تغيير الغلاف',
+                    _busy ? null : () => _pick(pickBannerImage, (v) => _bannerVal = v)),
+                if (_bannerVal.isNotEmpty)
+                  TextButton(
+                    onPressed: _busy ? null : () => setState(() => _bannerVal = ''),
+                    child: Text('إزالة',
+                        style: cairo(13, weight: FontWeight.w700, color: AppColors.red600)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('الصورة الشخصية تُقصّ مربعة، والغلاف بنسبة 3:1.',
+                style: cairo(11, color: AppColors.slate400)),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: cairo(12, color: AppColors.red600)),

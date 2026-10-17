@@ -42,8 +42,13 @@ class Repo {
       _users.doc(uid).update({'name': name});
 
   static Future<void> updateProfile(String uid,
-      {required String name, required String bio, required String avatar}) async {
-    await _users.doc(uid).update({'name': name, 'bio': bio, 'avatar': avatar});
+      {required String name,
+      required String bio,
+      required String avatar,
+      required String banner}) async {
+    await _users
+        .doc(uid)
+        .update({'name': name, 'bio': bio, 'avatar': avatar, 'banner': banner});
     final mine = await _stories.where('authorId', isEqualTo: uid).get();
     if (mine.docs.isEmpty) return;
     final b = _db.batch();
