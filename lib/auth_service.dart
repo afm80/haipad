@@ -1,53 +1,60 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'data.dart';
+import 'repo.dart';
 
 /// طبقة بسيطة فوق Firebase Auth: Google + البريد وكلمة المرور.
 class AuthService {
   static FirebaseAuth get _auth => FirebaseAuth.instance;
+  static StreamSubscription<User?>? _sub;
 
   static User? get user => _auth.currentUser;
 
-  static Stream<User?> get changes {
-    try {
-      return _auth.authStateChanges();
-    } catch (_) {
-      return Stream.value(null);
-    }
-  }
+  static Stream<User?> get changes => _auth.authStateChanges();
 
-  /// ينسخ بيانات المستخدم الحقيقي إلى حالة التطبيق (الاسم والصورة).
-  static void syncProfile(User? u) {
-    if (u == null) return;
-    final name = (u.displayName != null && u.displayName!.trim().isNotEmpty)
-        ? u.displayName!.trim()
-        : (u.email ?? 'مستخدم').split('@').first;
-    app.setUser(name: name, avatar: u.photoURL);
+  /// يربط حالة الدخول ببيانات التطبيق: ينشئ ملف المستخدم عند أول دخول ثم يبدأ القراءة الحيّة.
+  static void init() {
+    _sub?.cancel();
+    _sub = _auth.authStateChanges().listen((u) async {
+      if (u == null) {
+        app.stop();
+        return;
+      }
+      try {
+        await Repo.ensureUser(u);
+        app.start(u.uid);
+      } catch (e) {
+        app.fail(e);
+      }
+    });
   }
 
   static Future<void> signInWithGoogle() async {
     final provider = GoogleAuthProvider()..setCustomParameters({'prompt': 'select_account'});
-    final cred = await _auth.signInWithPopup(provider);
-    syncProfile(cred.user);
+    await _auth.signInWithPopup(provider);
   }
 
   static Future<void> signInWithFacebook() async {
-    final cred = await _auth.signInWithPopup(FacebookAuthProvider());
-    syncProfile(cred.user);
+    await _auth.signInWithPopup(FacebookAuthProvider());
   }
 
   static Future<void> signInWithEmail(String email, String password) async {
-    final cred = await _auth.signInWithEmailAndPassword(
-        email: email.trim(), password: password);
-    syncProfile(cred.user);
+    await _auth.signInWithEmailAndPassword(email: email.trim(), password: password);
   }
 
   static Future<void> signUpWithEmail(
       String name, String email, String password) async {
     final cred = await _auth.createUserWithEmailAndPassword(
         email: email.trim(), password: password);
-    await cred.user?.updateDisplayName(name.trim());
-    await cred.user?.reload();
-    syncProfile(_auth.currentUser);
+    final u = cred.user;
+    if (u == null) return;
+    await u.updateDisplayName(name.trim());
+    try {
+      await Repo.ensureUser(u);
+      await Repo.setName(u.uid, name.trim());
+    } catch (_) {
+      // يُعاد إنشاء الملف تلقائياً عند الدخول التالي.
+    }
   }
 
   static Future<void> resetPassword(String email) =>

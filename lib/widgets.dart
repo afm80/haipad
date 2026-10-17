@@ -2,8 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'data.dart';
 import 'theme.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'auth_service.dart';
+import 'dialogs.dart';
 
 Future<void> showAlert(BuildContext context, String msg) {
   return showDialog<void>(
@@ -222,51 +222,130 @@ class AppHeader extends StatelessWidget {
   }
 
   Widget _auth(BuildContext context, bool showName) {
-    return StreamBuilder<User?>(
-      stream: AuthService.changes,
-      builder: (context, snap) {
-        final u = snap.data;
-        if (u == null) return const SizedBox.shrink();
-        return PopupMenuButton<String>(
-          tooltip: '',
-          onSelected: (v) {
-            if (v == 'profile') app.go('profile');
-            if (v == 'logout') AuthService.signOut();
-          },
-          itemBuilder: (_) => [
-            PopupMenuItem(
-                value: 'profile',
-                child: Text('ملفي الشخصي', style: cairo(13, weight: FontWeight.w700))),
-            PopupMenuItem(
-                value: 'logout',
-                child: Text('تسجيل الخروج',
-                    style: cairo(13, weight: FontWeight.w700, color: AppColors.red600))),
-          ],
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.brand500, width: 2),
-                ),
-                child: ClipOval(child: netImage(u.photoURL ?? app.userAvatar)),
-              ),
-              if (showName) ...[
-                const SizedBox(width: 8),
-                Text(app.userName, style: cairo(12, weight: FontWeight.w700)),
-              ],
-            ],
-          ),
-        );
+    return PopupMenuButton<String>(
+      tooltip: '',
+      onSelected: (v) {
+        if (v == 'profile') app.go('profile');
+        if (v == 'my-stories') app.go('my-stories');
+        if (v == 'logout') AuthService.signOut();
       },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+            value: 'profile',
+            child: Text('ملفي الشخصي', style: cairo(13, weight: FontWeight.w700))),
+        PopupMenuItem(
+            value: 'my-stories',
+            child: Text('لوحة قصصي', style: cairo(13, weight: FontWeight.w700))),
+        PopupMenuItem(
+            value: 'logout',
+            child: Text('تسجيل الخروج',
+                style: cairo(13, weight: FontWeight.w700, color: AppColors.red600))),
+      ],
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.brand500, width: 2),
+            ),
+            child: avatarCircle(app.userAvatar, app.userName, 32),
+          ),
+          if (showName) ...[
+            const SizedBox(width: 8),
+            Text(app.userName, style: cairo(12, weight: FontWeight.w700)),
+          ],
+        ],
+      ),
     );
   }
 }
 
+/// يشترك في Stream مرة واحدة ولا يعيد الاشتراك عند إعادة بناء الصفحة؛
+/// يعيد الاشتراك فقط عند تغيّر [streamKey].
+class Live<T> extends StatefulWidget {
+  final Object streamKey;
+  final Stream<T> Function() create;
+  final Widget Function(BuildContext, AsyncSnapshot<T>) builder;
+  const Live({
+    super.key,
+    required this.streamKey,
+    required this.create,
+    required this.builder,
+  });
+
+  @override
+  State<Live<T>> createState() => _LiveState<T>();
+}
+
+class _LiveState<T> extends State<Live<T>> {
+  late Stream<T> _stream = widget.create();
+
+  @override
+  void didUpdateWidget(Live<T> old) {
+    super.didUpdateWidget(old);
+    if (old.streamKey != widget.streamKey) _stream = widget.create();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      StreamBuilder<T>(stream: _stream, builder: widget.builder);
+}
+
+/// ينفّذ عملية على Firestore ويعرض رسالة مفهومة عند الفشل.
+Future<void> guard(BuildContext context, Future<void> Function() action) async {
+  try {
+    await action();
+  } catch (e) {
+    final msg = e.toString().contains('permission-denied')
+        ? 'ليست لديك صلاحية لتنفيذ هذه العملية.'
+        : 'تعذّر تنفيذ العملية، حاول مرة أخرى.';
+    if (context.mounted) showAlert(context, msg);
+  }
+}
+
+Widget loadingBox() => const Padding(
+      padding: EdgeInsets.symmetric(vertical: 32),
+      child: Center(child: CircularProgressIndicator(color: AppColors.brand500)),
+    );
+
+Widget emptyLine(String t) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(t, style: cairo(14, color: AppColors.slate400)),
+    );
+
+Widget errorLine(String t) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(t, style: cairo(14, color: AppColors.red600)),
+    );
+
+/// صورة دائرية للمستخدم؛ تعرض الحرف الأول إذا لم تتوفر صورة.
+Widget avatarCircle(String url, String name, double size) {
+  final letter = name.trim().isEmpty ? '؟' : name.trim().substring(0, 1);
+  return ClipOval(
+    child: SizedBox(
+      width: size,
+      height: size,
+      child: url.isEmpty
+          ? Container(
+              alignment: Alignment.center,
+              color: AppColors.brand100,
+              child: Text(letter,
+                  style: cairo(size * 0.45, weight: FontWeight.w800, color: AppColors.brand600)),
+            )
+          : netImage(url),
+    ),
+  );
+}
+
 Widget netImage(String url, {BoxFit fit = BoxFit.cover}) {
+  if (url.isEmpty) {
+    return Container(
+      color: AppColors.slate100,
+      alignment: Alignment.center,
+      child: const Icon(Icons.menu_book, color: AppColors.slate300),
+    );
+  }
   return Image.network(
     url,
     fit: fit,
@@ -413,6 +492,20 @@ class StoryCard extends StatelessWidget {
                             style: cairo(10, weight: FontWeight.w700, color: Colors.white)),
                       ),
                     ),
+                    if (story.completed)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.emerald600,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text('مكتملة',
+                              style: cairo(10, weight: FontWeight.w700, color: Colors.white)),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -509,223 +602,5 @@ class StoriesGrid extends StatelessWidget {
         itemBuilder: (_, i) => StoryCard(story: stories[i]),
       );
     });
-  }
-}
-
-// ───────────── نافذة كتابة قصة ─────────────
-Future<void> showWriteDialog(BuildContext context) {
-  return showDialog<void>(
-    context: context,
-    builder: (_) => WriteStoryDialog(parentContext: context),
-  );
-}
-
-class WriteStoryDialog extends StatefulWidget {
-  final BuildContext parentContext;
-  const WriteStoryDialog({super.key, required this.parentContext});
-
-  @override
-  State<WriteStoryDialog> createState() => _WriteStoryDialogState();
-}
-
-class _WriteStoryDialogState extends State<WriteStoryDialog> {
-  final _form = GlobalKey<FormState>();
-  final _title = TextEditingController();
-  final _cover = TextEditingController();
-  final _desc = TextEditingController();
-  final _chapter = TextEditingController();
-  String _genre = allGenres.first;
-
-  static const _covers = [
-    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=400',
-    'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=400',
-    'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400',
-  ];
-
-  @override
-  void dispose() {
-    _title.dispose();
-    _cover.dispose();
-    _desc.dispose();
-    _chapter.dispose();
-    super.dispose();
-  }
-
-  String? _req(String? v) => (v == null || v.trim().isEmpty) ? 'هذا الحقل مطلوب' : null;
-
-  void _save() {
-    if (!_form.currentState!.validate()) return;
-    app.createStory(_title.text.trim(), _genre, _cover.text.trim(), _desc.text.trim(),
-        _chapter.text.trim());
-    final ctx = widget.parentContext;
-    Navigator.pop(context);
-    if (ctx.mounted) showAlert(ctx, 'تم نشر قصتك الجديدة بنجاح على المنصة!');
-  }
-
-  Widget _label(String t) => Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Text(t, style: cairo(12, weight: FontWeight.w700, color: AppColors.slate700)),
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    final w = MediaQuery.of(context).size.width;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Dialog(
-        backgroundColor: Colors.white,
-        insetPadding: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 672),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(w >= 640 ? 32 : 24),
-            child: Form(
-              key: _form,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    decoration: const BoxDecoration(
-                        border: Border(bottom: BorderSide(color: AppColors.slate100))),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('إنشاء قصة جديدة',
-                                  style: cairo(24,
-                                      weight: FontWeight.w800, color: AppColors.slate900)),
-                              const SizedBox(height: 4),
-                              Text('أدخل معلومات القصة ثم أضف فصلك الأول.',
-                                  style: cairo(12, color: AppColors.slate500)),
-                            ],
-                          ),
-                        ),
-                        InkWell(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(Icons.close, size: 22, color: AppColors.slate400),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _label('عنوان القصة *'),
-                  TextFormField(
-                    controller: _title,
-                    validator: _req,
-                    style: cairo(14),
-                    decoration: fieldDeco('مثال: سر القلعة المفقودة'),
-                  ),
-                  const SizedBox(height: 16),
-                  _label('تصنيف القصة (من بين 23 قسم) *'),
-                  DropdownButtonFormField<String>(
-                    value: _genre,
-                    isExpanded: true,
-                    style: cairo(14),
-                    decoration: fieldDeco(''),
-                    items: allGenres
-                        .map((g) => DropdownMenuItem(value: g, child: Text(g, style: cairo(14))))
-                        .toList(),
-                    onChanged: (v) => setState(() => _genre = v ?? _genre),
-                  ),
-                  const SizedBox(height: 16),
-                  _label('صورة الغلاف (رابط الصورة أو اختر جهازك)'),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _cover,
-                          keyboardType: TextInputType.url,
-                          style: cairo(14),
-                          decoration: fieldDeco('https://images.unsplash.com/...'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Material(
-                        color: AppColors.slate100,
-                        borderRadius: BorderRadius.circular(12),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () => setState(
-                              () => _cover.text = _covers[Random().nextInt(_covers.length)]),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                            child: Text('غلاف عشوائي',
-                                style: cairo(12,
-                                    weight: FontWeight.w700, color: AppColors.slate700)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _label('الملخص / وصف القصة *'),
-                  TextFormField(
-                    controller: _desc,
-                    validator: _req,
-                    maxLines: 3,
-                    style: cairo(14),
-                    decoration: fieldDeco('نبذة مختصرة مشوقة تجذب القراء...'),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.only(top: 16),
-                    decoration: const BoxDecoration(
-                        border: Border(top: BorderSide(color: AppColors.slate100))),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _label('محتوى الفصل الأول *'),
-                        TextFormField(
-                          controller: _chapter,
-                          validator: _req,
-                          maxLines: 6,
-                          style: tajawal(14, height: 1.625),
-                          decoration: fieldDeco('اكتب أحداث الفصل الأول هنا...'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: Text('إلغاء',
-                            style: cairo(14, weight: FontWeight.w700, color: AppColors.slate600)),
-                      ),
-                      const SizedBox(width: 12),
-                      Material(
-                        color: AppColors.brand500,
-                        borderRadius: BorderRadius.circular(12),
-                        elevation: 2,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: _save,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            child: Text('نشر القصة فوراً',
-                                style: cairo(14, weight: FontWeight.w700, color: Colors.white)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'auth_service.dart';
 import 'app_shell.dart';
 import 'theme.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  Object? initError;
   try {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
@@ -19,14 +19,17 @@ void main() async {
         appId: "1:949476046493:web:85d0147fa2e87cc21d0674",
       ),
     );
-    FirebaseAuth.instance.authStateChanges().listen(AuthService.syncProfile);
-  } catch (_) {}
+    AuthService.init();
+  } catch (e) {
+    initError = e;
+  }
 
-  runApp(const HaipadApp());
+  runApp(HaipadApp(initError: initError));
 }
 
 class HaipadApp extends StatelessWidget {
-  const HaipadApp({super.key});
+  final Object? initError;
+  const HaipadApp({super.key, this.initError});
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +43,17 @@ class HaipadApp extends StatelessWidget {
       ),
       builder: (context, child) =>
           Directionality(textDirection: TextDirection.rtl, child: child!),
-      home: const AppShell(),
+      home: initError == null
+          ? const AppShell()
+          : Scaffold(
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text('تعذّرت تهيئة Firebase.\n$initError',
+                      textAlign: TextAlign.center, style: cairo(14)),
+                ),
+              ),
+            ),
     );
   }
 }

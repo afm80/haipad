@@ -81,3 +81,14 @@ BoxDecoration cardBox({double radius = 24, Color color = Colors.white}) {
     ],
   );
 }
+
+/// وقت نسبي مختصر بالعربية.
+String timeAgo(DateTime? t) {
+  if (t == null) return 'الآن';
+  final d = DateTime.now().difference(t);
+  if (d.inMinutes < 1) return 'الآن';
+  if (d.inMinutes < 60) return 'منذ ${d.inMinutes} د';
+  if (d.inHours < 24) return 'منذ ${d.inHours} س';
+  if (d.inDays < 30) return 'منذ ${d.inDays} يوم';
+  return '${t.year}/${t.month}/${t.day}';
+}
