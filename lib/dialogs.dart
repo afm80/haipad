@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'cover_picker.dart';
 import 'data.dart';
 import 'repo.dart';
 import 'theme.dart';
@@ -151,7 +152,8 @@ class StoryFormDialog extends StatefulWidget {
 class _StoryFormDialogState extends State<StoryFormDialog> {
   final _form = GlobalKey<FormState>();
   late final _title = TextEditingController(text: widget.story?.title ?? '');
-  late final _cover = TextEditingController(text: widget.story?.cover ?? '');
+  late String _coverVal = widget.story?.cover ?? '';
+  String? _coverError;
   late final _desc = TextEditingController(text: widget.story?.desc ?? '');
   late final _tags = TextEditingController(text: widget.story?.tags.join('، ') ?? '');
   final _chTitle = TextEditingController(text: 'الفصل الأول');
@@ -168,7 +170,6 @@ class _StoryFormDialogState extends State<StoryFormDialog> {
   @override
   void dispose() {
     _title.dispose();
-    _cover.dispose();
     _desc.dispose();
     _tags.dispose();
     _chTitle.dispose();
@@ -191,7 +192,7 @@ class _StoryFormDialogState extends State<StoryFormDialog> {
           widget.story!.id,
           title: _title.text.trim(),
           genre: _genre,
-          cover: _cover.text.trim(),
+          cover: _coverVal,
           desc: _desc.text.trim(),
           tags: _parseTags(_tags.text),
           completed: _completed,
@@ -201,7 +202,7 @@ class _StoryFormDialogState extends State<StoryFormDialog> {
           me: me,
           title: _title.text.trim(),
           genre: _genre,
-          cover: _cover.text.trim(),
+          cover: _coverVal,
           desc: _desc.text.trim(),
           tags: _parseTags(_tags.text),
           completed: _completed,
@@ -230,6 +231,19 @@ class _StoryFormDialogState extends State<StoryFormDialog> {
           _error = 'تعذّر الحفظ، حاول مرة أخرى.';
         });
       }
+    }
+  }
+
+  Future<void> _pickCover() async {
+    try {
+      final data = await pickCoverImage();
+      if (data == null || !mounted) return;
+      setState(() {
+        _coverVal = data;
+        _coverError = null;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _coverError = e.toString());
     }
   }
 
@@ -264,13 +278,43 @@ class _StoryFormDialogState extends State<StoryFormDialog> {
               onChanged: (v) => setState(() => _genre = v ?? _genre),
             ),
             const SizedBox(height: 16),
-            _label('صورة الغلاف (رابط صورة، اختياري)'),
-            TextFormField(
-              controller: _cover,
-              validator: _url,
-              keyboardType: TextInputType.url,
-              style: cairo(14),
-              decoration: fieldDeco('https://...'),
+            _label('صورة الغلاف (اختياري)'),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(width: 72, height: 96, child: netImage(_coverVal)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _btn(_coverVal.isEmpty ? 'اختيار صورة من الجهاز' : 'تغيير الصورة',
+                              _busy ? null : _pickCover),
+                          if (_coverVal.isNotEmpty)
+                            TextButton(
+                              onPressed: _busy ? null : () => setState(() => _coverVal = ''),
+                              child: Text('إزالة',
+                                  style: cairo(13,
+                                      weight: FontWeight.w700, color: AppColors.red600)),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text('تُقصّ الصورة تلقائياً بنسبة 3:4.',
+                          style: cairo(11, color: AppColors.slate400)),
+                      if (_coverError != null) errorLine(_coverError!),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             _label('الملخص / وصف القصة *'),

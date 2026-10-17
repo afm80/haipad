@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'data.dart';
 import 'theme.dart';
@@ -338,6 +340,8 @@ Widget avatarCircle(String url, String name, double size) {
   );
 }
 
+final Map<String, Uint8List> _imgCache = {};
+
 Widget netImage(String url, {BoxFit fit = BoxFit.cover}) {
   if (url.isEmpty) {
     return Container(
@@ -345,6 +349,23 @@ Widget netImage(String url, {BoxFit fit = BoxFit.cover}) {
       alignment: Alignment.center,
       child: const Icon(Icons.menu_book, color: AppColors.slate300),
     );
+  }
+  // صور مرفوعة من الجهاز تُحفظ كنص base64
+  if (url.startsWith('data:image')) {
+    try {
+      final bytes = _imgCache.putIfAbsent(
+          url, () => base64Decode(url.substring(url.indexOf(',') + 1)));
+      return Image.memory(
+        bytes,
+        fit: fit,
+        width: double.infinity,
+        height: double.infinity,
+        gaplessPlayback: true,
+        errorBuilder: (_, __, ___) => Container(color: AppColors.slate100),
+      );
+    } catch (_) {
+      return Container(color: AppColors.slate100);
+    }
   }
   return Image.network(
     url,
