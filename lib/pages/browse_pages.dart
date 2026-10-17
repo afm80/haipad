@@ -27,33 +27,13 @@ Widget _chip(String label, bool active, VoidCallback onTap) {
 class ExplorePage extends StatelessWidget {
   ExplorePage({super.key});
 
-  List<Story> _filtered() {
-    var l = app.published;
-    if (app.genreFilter != 'الجميع') {
-      l = l.where((s) => s.genre == app.genreFilter).toList();
-    }
-    if (app.statusFilter == 'مكتملة') l = l.where((s) => s.completed).toList();
-    if (app.statusFilter == 'مستمرة') l = l.where((s) => !s.completed).toList();
-    final q = app.searchQuery.trim().toLowerCase();
-    if (q.isNotEmpty) {
-      l = l
-          .where((s) =>
-              s.title.toLowerCase().contains(q) ||
-              s.author.toLowerCase().contains(q) ||
-              s.genre.toLowerCase().contains(q) ||
-              s.tags.any((t) => t.toLowerCase().contains(q)))
-          .toList();
-    }
-    return sortStories(l, app.sort);
-  }
-
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
     final cols = w >= 1024 ? 6 : (w >= 768 ? 4 : (w >= 640 ? 3 : 2));
     final all = app.genreFilter == 'الجميع';
     final q = app.searchQuery.trim();
-    final list = _filtered();
+    final list = app.feed;
     final filtered = !all || q.isNotEmpty || app.statusFilter != 'الكل';
 
     return Column(
@@ -133,15 +113,36 @@ class ExplorePage extends StatelessWidget {
                 : (all ? 'كل القصص' : 'تصنيف: ${app.genreFilter}'),
             style: cairo(24, weight: FontWeight.w700, color: AppColors.slate900)),
         const SizedBox(height: 16),
-        if (!app.storiesLoaded)
+        if (!app.feedLoaded)
           loadingBox()
-        else
+        else ...[
           StoriesGrid(
             stories: list,
             emptyText: filtered
                 ? 'لا توجد قصص مطابقة.'
                 : 'لا توجد قصص منشورة بعد. كن أول من ينشر!',
           ),
+          if (app.feedHasMore) ...[
+            const SizedBox(height: 24),
+            Center(
+              child: app.feedLoading
+                  ? const CircularProgressIndicator(color: AppColors.brand500)
+                  : Material(
+                      color: AppColors.slate900,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: app.loadMore,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          child: Text('عرض المزيد',
+                              style: cairo(14, weight: FontWeight.w700, color: Colors.white)),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ],
       ],
     );
   }
@@ -153,7 +154,7 @@ class LibraryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final list = app.stories.where((s) => app.library.contains(s.id)).toList();
+    final list = app.libraryStories.where((s) => app.library.contains(s.id)).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -171,7 +172,7 @@ class LibraryPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        if (!app.storiesLoaded)
+        if (!app.libraryLoaded)
           loadingBox()
         else
           StoriesGrid(
@@ -257,7 +258,7 @@ class MyStoriesPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        if (!app.storiesLoaded)
+        if (!app.mineLoaded)
           loadingBox()
         else if (mine.isEmpty)
           emptyLine(drafts ? 'لا توجد مسودات.' : 'لم تنشر أي قصة بعد.'),

@@ -81,9 +81,8 @@ class HomePage extends StatelessWidget {
   }
 
   Widget _featured(BuildContext context) {
-    if (!app.storiesLoaded) return loadingBox();
-    final all = app.published;
-    if (all.isEmpty) {
+    if (!app.homeLoaded) return loadingBox();
+    if (app.homeTop.isEmpty && app.homeFresh.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(32),
         decoration: cardBox(),
@@ -100,14 +99,12 @@ class HomePage extends StatelessWidget {
         ),
       );
     }
-    final top = sortStories(all, 'reads').take(10).toList();
-    final fresh = sortStories(all, 'new').take(10).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _section('الأكثر قراءة', top),
+        _section('الأكثر قراءة', app.homeTop),
         const SizedBox(height: 32),
-        _section('أحدث القصص', fresh),
+        _section('أحدث القصص', app.homeFresh),
       ],
     );
   }

@@ -21,22 +21,32 @@ class ProfilePage extends StatelessWidget {
         if (snap.connectionState == ConnectionState.waiting) return loadingBox();
         final p = snap.data;
         if (p == null) return emptyLine('هذا المستخدم غير موجود.');
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 896),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _card(context, p, w),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: cardBox(),
-                  child: _ProfileTabs(profile: p),
+        return Live<List<Story>>(
+          streamKey: p.uid,
+          create: () => Repo.authorStoriesStream(p.uid),
+          builder: (context, ss) {
+            final pub = (ss.data ?? const <Story>[])
+                .where((s) => s.publishedChapters > 0)
+                .toList();
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 896),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _card(context, p, w, pub.length),
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: cardBox(),
+                      child: _ProfileTabs(
+                          profile: p, stories: pub, storiesLoaded: ss.data != null),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -112,7 +122,7 @@ class ProfilePage extends StatelessWidget {
     ]);
   }
 
-  Widget _card(BuildContext context, UserProfile p, double w) {
+  Widget _card(BuildContext context, UserProfile p, double w, int storyCount) {
     final wide = w >= 640;
     final size = wide ? 128.0 : 112.0;
     final overlap = wide ? 80.0 : 64.0;
@@ -211,7 +221,7 @@ class ProfilePage extends StatelessWidget {
                     mainAxisAlignment:
                         wide ? MainAxisAlignment.start : MainAxisAlignment.center,
                     children: [
-                      _stat('${app.publishedOf(p.uid).length}', 'قصة'),
+                      _stat('$storyCount', 'قصة'),
                       const SizedBox(width: 24),
                       _stat(fmt(p.followers), 'متابع'),
                       const SizedBox(width: 24),
@@ -231,7 +241,10 @@ class ProfilePage extends StatelessWidget {
 // ───────────── تبويبات الحساب ─────────────
 class _ProfileTabs extends StatefulWidget {
   final UserProfile profile;
-  const _ProfileTabs({required this.profile});
+  final List<Story> stories;
+  final bool storiesLoaded;
+  const _ProfileTabs(
+      {required this.profile, required this.stories, required this.storiesLoaded});
 
   @override
   State<_ProfileTabs> createState() => _ProfileTabsState();
@@ -316,11 +329,7 @@ class _ProfileTabsState extends State<_ProfileTabs> {
                         ),
                     ]),
                     const SizedBox(height: 12),
-                    StoriesGrid(
-                      stories: app.stories.where((s) => l.storyIds.contains(s.id)).toList(),
-                      maxCols: 4,
-                      emptyText: 'القائمة فارغة.',
-                    ),
+                    _ListStories(ids: l.storyIds),
                   ],
                 ),
               ),
@@ -436,8 +445,9 @@ class _ProfileTabsState extends State<_ProfileTabs> {
       case 'wall':
         return _wall();
       default:
+        if (!widget.storiesLoaded) return loadingBox();
         return StoriesGrid(
-          stories: app.publishedOf(widget.profile.uid),
+          stories: widget.stories,
           maxCols: 4,
           emptyText: _isMe ? 'لم تنشر أي قصة بعد.' : 'لم ينشر هذا الكاتب أي قصة بعد.',
         );
@@ -464,6 +474,44 @@ class _ProfileTabsState extends State<_ProfileTabs> {
         const SizedBox(height: 24),
         _content(),
       ],
+    );
+  }
+}
+
+/// قصص قائمة قراءة: تُجلب بمعرّفاتها فقط.
+class _ListStories extends StatefulWidget {
+  final List<String> ids;
+  const _ListStories({required this.ids});
+
+  @override
+  State<_ListStories> createState() => _ListStoriesState();
+}
+
+class _ListStoriesState extends State<_ListStories> {
+  late Future<List<Story>> _f = _load();
+
+  Future<List<Story>> _load() async {
+    if (widget.ids.isEmpty) return <Story>[];
+    final all = await Repo.storiesByIds(widget.ids);
+    return all.where((s) => s.publishedChapters > 0 || s.authorId == app.uid).toList();
+  }
+
+  @override
+  void didUpdateWidget(_ListStories old) {
+    super.didUpdateWidget(old);
+    if (old.ids.join(',') != widget.ids.join(',')) _f = _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Story>>(
+      future: _f,
+      builder: (context, snap) {
+        if (snap.hasError) return errorLine('تعذّر تحميل القصص.');
+        final l = snap.data;
+        if (l == null) return loadingBox();
+        return StoriesGrid(stories: l, maxCols: 4, emptyText: 'القائمة فارغة.');
+      },
     );
   }
 }
