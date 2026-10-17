@@ -34,7 +34,7 @@ TextStyle cairo(double size,
     {FontWeight weight = FontWeight.w400,
     Color color = AppColors.slate800,
     double? height}) {
-  return GoogleFonts.cairo(
+  return GoogleFonts.notoNaskhArabic(
       fontSize: size, fontWeight: weight, color: color, height: height);
 }
 
@@ -42,7 +42,7 @@ TextStyle tajawal(double size,
     {FontWeight weight = FontWeight.w400,
     Color color = AppColors.slate800,
     double? height}) {
-  return GoogleFonts.tajawal(
+  return GoogleFonts.notoNaskhArabic(
       fontSize: size, fontWeight: weight, color: color, height: height);
 }
 
@@ -52,12 +52,12 @@ Widget brandName(double size, {double height = 1.1}) {
     TextSpan(children: [
       TextSpan(
           text: 'H',
-          style: cairo(size,
-              weight: FontWeight.w800, color: AppColors.brand500, height: height)),
+          style: GoogleFonts.cairo(
+              fontSize: size, fontWeight: FontWeight.w800, color: AppColors.brand500, height: height)),
       TextSpan(
           text: 'aipad',
-          style: cairo(size,
-              weight: FontWeight.w800, color: AppColors.slate900, height: height)),
+          style: GoogleFonts.cairo(
+              fontSize: size, fontWeight: FontWeight.w800, color: AppColors.slate900, height: height)),
     ]),
     textDirection: TextDirection.ltr,
   );
