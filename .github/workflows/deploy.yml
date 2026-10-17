@@ -23,6 +23,8 @@ jobs:
           fi
 
       - run: flutter pub get
+      # الأخطاء الحقيقية توقف النشر؛ التحذيرات والملاحظات لا توقفه.
+      - run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
       - run: flutter build web --release
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
